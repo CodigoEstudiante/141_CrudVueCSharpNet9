@@ -1,0 +1,156 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+<div id="app">
+    <div class="row">
+
+        <div class="col-sm-6">
+            <input type="hidden" v-model="data.idProduct" />
+            <div class="mb-3">
+                <label class="form-label">Name:</label>
+                <input class="form-control" type="text" v-model="data.name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Price:</label>
+                <input class="form-control" type="number" v-model="data.price" />
+            </div>
+            <br />
+            <button class="btn btn-success" type="button" v-on:click="saveProduct" v-if="isToCreate">Save New</button>
+            <div v-else>
+                <button class="btn btn-primary" type="button" v-on:click="editProduct">Save changes</button>
+                <button class="btn btn-warning ms-2" type="button" v-on:click="cancelSelect">Cancel</button>
+            </div>
+        </div>
+
+        <div class="col-sm-6">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>IdProduct</th>
+                        <th>Name</th>
+                        <th>Price</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in products">
+                        <td>{{item.idProduct}}</td>
+                        <td>{{item.name}}</td>
+                        <td>{{item.price}}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" type="button" v-on:click="selectProduct(item)">Edit</button>
+                            <button class="btn btn-sm btn-danger ms-2" type="button" v-on:click="deleteProduct(item.idProduct)">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts{
+
+    <script src="~/js/vue/vue.global.js"></script>
+
+    <script>
+
+        const { createApp, ref } = Vue
+        createApp( {
+            setup () {
+
+                const data = ref( { idProduct: 0, name: "", price: 0 } );
+                const products = ref( [] )
+                const isToCreate = ref( true )
+
+
+                const saveProduct = () => {
+                    fetch( `/product/save`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        body: JSON.stringify( { name: data.value.name, price: data.value.price } )
+                    } ).then( response => {
+                        if ( response.ok ) {
+                            data.value.name = ""
+                            data.value.price = ""
+                            showProducts()
+                        }
+
+                    } )
+                }
+
+                const showProducts = () => {
+                    fetch( `/product/getAll`, {
+                        method: "GET",
+                    } ).then( response => {
+                        return response.json()
+                    } ).then( data => {
+                        products.value = data
+                    } )
+                }
+
+                const selectProduct = ( item ) => {
+                    isToCreate.value = false;
+                    data.value.idProduct = item.idProduct;
+                    data.value.name = item.name;
+                    data.value.price = item.price;
+                }
+
+                const cancelSelect = () => {
+                    isToCreate.value = true;
+                    data.value.idProduct = 0;
+                    data.value.name = "";
+                    data.value.price = "";
+                }
+
+                const editProduct = () => {
+                    fetch( `/product/edit`, {
+                        method: "PUT",
+                        headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                        body: JSON.stringify( { idProduct: data.value.idProduct, name: data.value.name, price: data.value.price } )
+                    } ).then( response => {
+                        if ( response.ok ) {
+
+                            const index = products.value.findIndex( p => p.idProduct == data.value.idProduct );
+
+                            products.value[ index ].name = data.value.name;
+                            products.value[ index ].price = data.value.price;
+                            cancelSelect();
+
+                        }
+
+                    } )
+                }
+
+                const deleteProduct = ( id ) => {
+                    fetch( `/product/delete?idProduct=${ id }`, {
+                        method: "DELETE",
+                    } ).then( response => {
+                        if ( response.ok ) {
+
+                            const index = products.value.findIndex( p => p.idProduct == id );
+                            products.value.splice( index, 1 );
+
+                        }
+
+                    } )
+                }
+
+
+
+                showProducts()
+
+
+
+                return {
+                    data, products, isToCreate
+                    , saveProduct, showProducts, selectProduct, cancelSelect, editProduct, deleteProduct
+                }
+            }
+        } ).mount( "#app" )
+    </script>
+
+}
